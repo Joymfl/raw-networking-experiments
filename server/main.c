@@ -18,26 +18,48 @@ int main() {
   inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr);
 
   int res = bind(sock, (struct sockaddr *)(&server_addr), 80);
-  printf("res: %d\n", res);
+  if (res == -1) {
+    close(sock);
+    exit(-1);
+  }
   socklen_t addr;
 
-  accept(sock, (struct sockaddr *)(&server_addr), &addr);
+  // accept(sock, (struct sockaddr *)(&server_addr), &addr);
   printf("listening on port 8080\n");
   int result = listen(sock, 1);
-  // for (;;) {
-  //   accept(sock, (struct sockaddr *)(&server_addr), &addr);
-  //   char buf[32];
-  //
-  //   inet_ntop(AF_INET, &addr, buf, addr);
-  //   printf("connection addr: %s", buf);
-  // }
-  char recv_buf[5];
-
-  // printf("receiving on: %s \n");
+  if (result == -1) {
+    perror("failed to listen on socket\n");
+    exit(-1);
+  }
   for (;;) {
-    int result = recv(sock, recv_buf, 5, MSG_WAITALL);
-    if (result != -1) {
-      printf("data: %s\n", recv_buf);
+    printf("starting accepting\n");
+    struct sockaddr_in connecting_addr;
+    int new_sock = accept(sock, (struct sockaddr *)&connecting_addr, &addr);
+    if (new_sock != -1) {
+      char in_addr[INET_ADDRSTRLEN];
+      printf("connection accepted to %s::%d\n",
+             inet_ntop(AF_INET, &connecting_addr.sin_addr, in_addr,
+                       INET_ADDRSTRLEN),
+             be32toh(connecting_addr.sin_port));
+
+      printf("receiving on: %d \n", new_sock);
+      char recv_buf[4];
+      int result = recv(new_sock, recv_buf, 4, MSG_WAITALL);
+      if (result != -1) {
+        printf("data received: \n");
+        for (int i = 0; i < sizeof(recv_buf) / sizeof(recv_buf[0]); i++) {
+          printf("byte: %d\n", recv_buf[i]);
+        }
+        char ack_msg[] = "ACK";
+        if (send(new_sock, &ack_msg, sizeof(ack_msg), 0) != -1) {
+          printf("ack sent\n");
+        }
+      } else {
+        perror("Error receiving data");
+        exit(-1);
+      }
+    } else {
+      printf("failed to accept connection\n");
     }
   }
 
