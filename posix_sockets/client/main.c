@@ -11,10 +11,19 @@ int main(int argc, char *argv[]) {
     printf("Failed to create socket\n");
     return EXIT_FAILURE;
   }
+  const char target_addr[INET_ADDRSTRLEN] = "192.168.1.16";
   struct sockaddr_in server_addr;
   memset(&server_addr, 0, sizeof(server_addr));
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(8080);
+  if (inet_pton(AF_INET, (const char *)&target_addr,
+                (void *)&server_addr.sin_addr.s_addr) == 1) {
+    printf("target addr string: %s\n", target_addr);
+    printf("target addr bin: %u\n", server_addr.sin_addr.s_addr);
+  } else {
+    printf("failed to convert\n");
+    return EXIT_FAILURE;
+  }
   if (connect(sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) ==
       0) {
     printf("connected\n");
@@ -33,6 +42,9 @@ int main(int argc, char *argv[]) {
     } else {
       printf("failed to receive any response\n");
     }
+  } else {
+    perror("failed to connect to target");
+    return EXIT_FAILURE;
   }
 
   return EXIT_SUCCESS;
