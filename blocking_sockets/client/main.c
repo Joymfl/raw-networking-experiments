@@ -7,27 +7,38 @@
 #include <unistd.h>
 
 const int USERS_NUM = 10000;
-int main(int argc, char *argv[]) {
+
+void cleanupsocket(int sock_fd) { close(sock_fd); }
+
+int createsocket(struct sockaddr_in *target_addr) {
   int sock = socket(AF_INET, SOCK_STREAM, 0);
   if (sock == -1) {
     printf("Failed to create socket\n");
-    return EXIT_FAILURE;
+    return -1;
   }
-  const char target_addr[INET_ADDRSTRLEN] = "192.168.1.16";
-  struct sockaddr_in server_addr;
-  memset(&server_addr, 0, sizeof(server_addr));
-  server_addr.sin_family = AF_INET;
-  server_addr.sin_port = htons(8080);
-  if (inet_pton(AF_INET, (const char *)&target_addr,
-                (void *)&server_addr.sin_addr.s_addr) == 1) {
-    printf("target addr string: %s\n", target_addr);
-    printf("target addr bin: %u\n", server_addr.sin_addr.s_addr);
+  return sock;
+}
+
+void createtarget(struct sockaddr_in *target_addr, const char *addrstring) {
+  memset(target_addr, 0, sizeof(*target_addr));
+  target_addr->sin_family = AF_INET;
+  target_addr->sin_port = htons(8080);
+  if (inet_pton(AF_INET, (const char *)addrstring,
+                (void *)&target_addr->sin_addr.s_addr) == 1) {
+    printf("target addr string: %s\n", addrstring);
+    printf("target addr bin: %u\n", target_addr->sin_addr.s_addr);
   } else {
     printf("failed to convert\n");
-    return EXIT_FAILURE;
   }
+}
 
+// TODO: Add arg handler to parse user input for target
+int main(int argc, char *argv[]) {
+  const char target_addr[INET_ADDRSTRLEN] = "127.0.0.1";
+  struct sockaddr_in server_addr;
+  createtarget(&server_addr, (char *)&target_addr);
   for (int user = 0; user < USERS_NUM; ++user) {
+    int sock = createsocket(&server_addr);
     if (connect(sock, (struct sockaddr *)&server_addr,
                 sizeof(struct sockaddr)) == 0) {
       printf("connected::user::%d\n", user);
@@ -41,14 +52,15 @@ int main(int argc, char *argv[]) {
       int recv_result = recv(sock, buf, sizeof(buf), 0);
       if (recv_result != -1) {
         printf("message confirmed\n");
-        close(sock);
-        exit(0);
+        cleanupsocket(sock);
       } else {
         printf("failed to receive any response\n");
+        // TODO: could add retry logic here
+        close(sock);
       }
     } else {
       perror("failed to connect to target");
-      return EXIT_FAILURE;
+      close(sock);
     }
   }
 

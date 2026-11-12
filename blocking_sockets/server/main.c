@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <threads.h>
 #include <unistd.h>
 int main() {
   int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -38,6 +39,11 @@ int main() {
     printf("starting accepting\n");
     struct sockaddr_in connecting_addr;
     int new_sock = accept(sock, (struct sockaddr *)&connecting_addr, &addr);
+    printf("sleeping\n");
+    struct timespec duration = {.tv_sec = 1, .tv_nsec = 5000000};
+    thrd_sleep(&duration, NULL);
+    printf("wakeup\n");
+
     if (new_sock != -1) {
       char in_addr[INET_ADDRSTRLEN];
       printf("connection accepted to %s::%u\n",
