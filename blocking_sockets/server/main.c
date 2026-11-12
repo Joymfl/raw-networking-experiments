@@ -57,8 +57,6 @@ int main() {
         if (send(new_sock, &ack_msg, sizeof(ack_msg), 0) != -1) {
           printf("ack sent\n");
         }
-        // this closes connections. a socket should be re-usable, instead of
-        // killing per message
         close(new_sock);
       } else {
         perror("Error receiving data");

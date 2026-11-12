@@ -5,6 +5,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+const int USERS_NUM = 10000;
 int main(int argc, char *argv[]) {
   int sock = socket(AF_INET, SOCK_STREAM, 0);
   if (sock == -1) {
@@ -24,27 +26,30 @@ int main(int argc, char *argv[]) {
     printf("failed to convert\n");
     return EXIT_FAILURE;
   }
-  if (connect(sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) ==
-      0) {
-    printf("connected\n");
-    char buf[] = {1, 2, 3, 4};
-    int res = send(sock, buf, sizeof(buf), 0);
-    if (res != -1) {
-      printf("bytes sent: %d\n", res);
+
+  for (int user = 0; user < USERS_NUM; ++user) {
+    if (connect(sock, (struct sockaddr *)&server_addr,
+                sizeof(struct sockaddr)) == 0) {
+      printf("connected::user::%d\n", user);
+      char buf[] = {1, 2, 3, 4};
+      int res = send(sock, buf, sizeof(buf), 0);
+      if (res != -1) {
+        printf("bytes sent: %d\n", res);
+      } else {
+        printf("failed to send\n");
+      }
+      int recv_result = recv(sock, buf, sizeof(buf), 0);
+      if (recv_result != -1) {
+        printf("message confirmed\n");
+        close(sock);
+        exit(0);
+      } else {
+        printf("failed to receive any response\n");
+      }
     } else {
-      printf("failed to send\n");
+      perror("failed to connect to target");
+      return EXIT_FAILURE;
     }
-    int recv_result = recv(sock, buf, sizeof(buf), 0);
-    if (recv_result != -1) {
-      printf("message confirmed\n");
-      close(sock);
-      exit(0);
-    } else {
-      printf("failed to receive any response\n");
-    }
-  } else {
-    perror("failed to connect to target");
-    return EXIT_FAILURE;
   }
 
   return EXIT_SUCCESS;
